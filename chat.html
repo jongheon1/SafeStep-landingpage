@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeStep - 당신의 안전한 첫 걸음을 도와드립니다!</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #FFF;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background-color: #f1f3f5;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+        }
+        .user-message {
+            text-align: right;
+        }
+        .bot-message {
+            text-align: left;
+        }
+        .message-bubble {
+            display: inline-block;
+            padding: 10px;
+            border-radius: 20px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        .user-message .message-bubble {
+            background-color: #007bff;
+            color: #FFF;
+        }
+        .bot-message .message-bubble {
+            background-color: #e9ecef;
+            color: #212529;
+        }
+        .source-info {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .source-toggle {
+            cursor: pointer;
+            color: #007bff;
+        }
+        .source-content {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center my-5">SafeStep - 당신의 안전한 첫 걸음을 도와드립니다!</h1>
+        <div class="chat-container">
+            <p class="mb-4">
+                <strong>근로 시간 관련 문제로 어려움을 겪고 계신가요?</strong><br>
+                저희 SafeStep 챗봇이 도와드립니다! 주 52시간제, 초과 근무 수당 미지급, 포괄임금제 문제 등 다양한 근로 시간 관련 문제를 해결하기 위한 법적 조언과 가이드를 제공합니다.<br>
+                <strong>지금 바로 질문해보세요!</strong> 우리의 AI 상담원이 신속하고 정확하게 답변해드립니다.
+            </p>
+            <div class="input-group mb-3">
+                <input type="file" class="form-control" id="fileInput">
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="input-group">
+                <input type="text" class="form-control" id="userInput" placeholder="메시지를 입력하세요">
+                <button class="btn btn-primary" id="sendButton">전송</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const question = userInput.value.trim();
+            if (question !== '') {
+                displayMessage('user', question);
+                userInput.value = '';
+
+                const formData = new FormData();
+                formData.append('question', question);
+
+                const fileInput = document.getElementById('fileInput');
+                if (fileInput.files.length > 0) {
+                    formData.append('file', fileInput.files[0]);
+                }
+
+                fetch('https://54.145.155.202:8000/ask', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    displayMessage('bot', data.answer, data.source);
+                    
+                    // 파일 입력창 초기화
+                    fileInput.value = '';
+                    
+                    // 파일 처리 완료 메시지 표시
+                    if (fileInput.files.length > 0) {
+                        displayMessage('bot', '파일이 성공적으로 처리되었습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        }
+        function displayMessage(sender, message, source = null) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('chat-message');
+            messageElement.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+            messageBubble.innerText = message;
+            messageElement.appendChild(messageBubble);
+
+            if (source) {
+                const sourceInfo = document.createElement('div');
+                sourceInfo.classList.add('source-info');
+
+                const sourceToggle = document.createElement('span');
+                sourceToggle.classList.add('source-toggle');
+                sourceToggle.innerText = '출처 보기';
+                sourceInfo.appendChild(sourceToggle);
+
+                const sourceContent = document.createElement('div');
+                sourceContent.classList.add('source-content');
+
+                sourceContent.innerHTML = source.map(doc => `
+                    <p><strong>출처:</strong> ${doc.source} / ${doc.page}</p>
+                    <p><strong>내용:</strong><br>${doc.content}</p>
+                `).join('<hr>');
+                sourceInfo.appendChild(sourceContent);
+
+                sourceToggle.addEventListener('click', () => {
+                    sourceContent.style.display = sourceContent.style.display === 'none' ? 'block' : 'none';
+                });
+
+                messageElement.appendChild(sourceInfo);
+            }
+
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+</html>
